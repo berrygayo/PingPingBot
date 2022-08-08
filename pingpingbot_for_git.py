@@ -339,5 +339,181 @@ async def by_lot(ctx,n,*args):
     await ctx.send(res_random_line)
 
 
+###################################################################################
+################################# 로아 ############################################
+###################################################################################
+
+# 로아 케릭 정보 가져오기 
+@client.command(name='로아')
+async def Roa_info(ctx,name):
+    user_name = quote(name) # 한글깨짐 방지 
+    url = "https://lostark.game.onstove.com/Profile/Character/"+ user_name 
+    print (url)
+    html = urlopen(url)
+    bsObject = BeautifulSoup(html, "html.parser")
+
+    # 서버/길드/직업 
+    server_name = bsObject.find_all("div", {"class":"profile-character-info"})[0].find_all("span")[2].text.replace("@","")
+    guild_name = bsObject.find_all("div", {"class":"game-info__guild"})[0].find_all("span")[1].text
+    role = bsObject.select('#profile-avatar > div.profile-equipment__character > img')[0]['alt']
+    embed = discord.Embed(
+        title = "❤️" + str(name) + "❤️",
+        description = f"서버:{server_name}, 길드:{guild_name}, 직업:{role}",
+        color = discord.Colour.magenta()
+    )
+    #이미지 
+    profile_avatar = bsObject.select('#profile-avatar > div.profile-equipment__character > img')[0]['src']
+    embed.set_thumbnail(url=profile_avatar)
+    
+    # 템/전/원 레벨
+    item_level = bsObject.find_all("div", {"class":"level-info2__item"})[0].find_all("span")[1].text
+    level = bsObject.find_all("div", {"class":"level-info__item"})[0].find_all("span")[1].text
+    expedition_level = bsObject.find_all("div", {"class":"level-info__expedition"})[0].find_all("span")[1].text
+
+    embed.add_field(
+        name='🔻 레벨',
+        value=f"아이템:{item_level}, 전투:{level}, 원정대:{expedition_level}",
+        inline = False
+    )  
+
+    #  특성
+    pa_1_name = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[0].text
+    pa_1_value = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[1].text
+    pa_2_name = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[2].text
+    pa_2_value = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[3].text
+    pa_3_name = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[4].text
+    pa_3_value = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[5].text
+    pa_4_name = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[6].text
+    pa_4_value = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[7].text
+    pa_5_name = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[8].text
+    pa_5_value = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[9].text
+    pa_6_name = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[10].text
+    pa_6_value = bsObject.find_all("div", {"class":"profile-ability-battle"})[0].find_all("span")[11].text
+   
+    embed.add_field(
+        name='🔻 특성',
+        value=f"{pa_1_name}:{pa_1_value},{pa_2_name}:{pa_2_value},{pa_3_name}:{pa_3_value},{pa_4_name}:{pa_4_value},{pa_5_name}:{pa_5_value},{pa_6_name}:{pa_6_value}",
+        inline = False
+    ) 
+    # 각인 
+    ability_engrave_list = bsObject.find_all("div", {"class":"profile-ability-engrave"})[0].find_all("span")
+    ability_engrave = []
+    for i in range(len(ability_engrave_list)):
+        pa_engrave = bsObject.find_all("div", {"class":"profile-ability-engrave"})[0].find_all("span")[i].text
+        ability_engrave.append(pa_engrave)
+    embed.add_field(
+        name='🔻 각인',
+        value=ability_engrave,
+        inline = False
+    ) 
+
+    # 5. 보석정보 
+    # 보석 리스트 
+    # 디코봇에서는 get_text를 써야 값이 가져와짐 확인 
+    jewel_level = bsObject.select('#profile-ability > script')[0].string
+    jewel_level_1 = []
+    jewel_level_2 = []
+
+    try:
+        for i in range(11):
+            tmp_level = re.split(r'의 보석', jewel_level)[i][-6:]
+            tmp = re.split(r'의 보석', jewel_level)[i+1]
+            tmp_skill = re.split('FONT COLOR',tmp)[3].split('</FONT>')[0].split('>')[1]
+            jewel='Lv'+tmp_level[0]+' '+tmp_skill
+            if "홍염" in tmp_level:
+                jewel_level_1.append(jewel)
+            else:
+                jewel_level_2.append(jewel)
+    except : 
+        print("보석없음")        
+    embed.add_field(
+        name='🔻 홍염의 보석',
+        value=jewel_level_1,
+        inline = False
+    ) 
+    embed.add_field(
+        name='🔻 멸화의 보석',
+        value=jewel_level_2,
+        inline = False
+    ) 
+    embed.set_footer(text=footer_text, icon_url ="https://github.com/berrygayo/PingPingBot/blob/main/%EC%98%81%EB%AA%AC.jpg?raw=true" )
+    await ctx.send(embed=embed)
+
+# 로아 내실 정보 
+@client.command(name='내실')
+async def Roa_contents_point(ctx,name):
+
+    user_name = quote(name) # 한글깨짐 방지 
+    url = "https://lostark.game.onstove.com/Profile/Character/"+ user_name 
+    html = urlopen(url)
+    bsObject = BeautifulSoup(html, "html.parser")
+
+    # selenium setting 
+    driver = webdriver.Chrome('~~ chromedriver 경로 ')
+    driver.get(url)
+    time.sleep(1)
+
+    
+    # embed basic 
+    embed = discord.Embed(
+        title = "❤️" + str(name) + "❤️",
+        description = f"아직 수집되지 않은 내실 현황을 보여줍니다. ",
+        color = discord.Colour.magenta()
+
+    )
+    #이미지 
+    embed.set_thumbnail(url='https://cdn-lostark.game.onstove.com/EFUI_IconAtlas/CumulativePoint/CumulativePoint_Greatpictures_4.png')
+
+    # "수집형 포인트" 클릭
+    search_box = driver.find_element("xpath", '//*[@id="profile-tab"]/div[1]/a[4]')
+    search_box.click()
+    
+    #3:모코코, #6:세계수 제외 
+    contents_point_list = [0,1,3,4,6,7]
+    # 종류별 갯수 
+    contents_dict = {'0':15,'1':96, '3':58, '4':47,'6':16, '7':9}
+    contents_name_dict = {'0':'❤️ 거인의 심장','1':'🌍 섬의 마음', '3':'🖌️ 위대한 미술품','4':'🏴‍☠️ 항해 모험물','6':'🧩 이그네아의 징표', '7':'💫 오르페우스의 별' }
+
+    for contents in contents_point_list:
+        # 페이지 클릭 
+        search_box = driver.find_element("xpath", f'//*[@id="tab1"]/div[1]/a[{contents+1}]')
+        search_box.click()
+        # setting 
+        n = contents_dict[str(contents)]
+        contents_name = contents_name_dict[str(contents)]
+        not_get_list = []
+        count = 0 
+    
+        for i in range(1,n+1):
+            tmp = driver.find_element("xpath",f'//*[@id="lui-tab1-{contents}"]/div/div[2]/ul/li[{i}]').text
+
+            if "획득" not in tmp:
+                count += 1
+                numbers = re.findall(r'\d+', tmp)
+                not_get_list.append(numbers[0])
+
+        get_count = n - count 
+
+        embed.add_field(
+            name=f" {contents_name} 미수집 번호 ({get_count}/{n}) ",
+            value=not_get_list,
+            inline = False
+        )  
+    # 모코코씨앗 갯수 
+    tmp = driver.find_element("xpath",'//*[@id="tab1"]/div[1]/a[3]').text
+    embed.add_field(
+        name=f" 🍐 모코코 씨앗 ({tmp[6:]}/1304)",
+        value=f"{tmp[6:]}개 모았음~ ",
+        inline = False
+    )  
+    # 세계수 잎 
+    tmp = driver.find_element("xpath",'//*[@id="tab1"]/div[1]/a[6]').text
+    embed.add_field(
+        name=f" 🍃 세계수 잎 ({tmp[6:]}/73)",
+        value=f"{tmp[6:]}개 모았음~ ",
+        inline = False
+    )      
+    embed.set_footer(text=footer_text, icon_url ="https://github.com/berrygayo/PingPingBot/blob/main/%EC%98%81%EB%AA%AC.jpg?raw=true" )
+    await ctx.send(embed=embed)
 
 client.run(discord_token) # 토큰 적는곳
